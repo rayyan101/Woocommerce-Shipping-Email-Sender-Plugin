@@ -1,0 +1,58 @@
+<?php
+	/**
+	 * In this class we are Changing Variation in Variable Product (User Page) Dropdown to Redio Button.
+	 *
+	 * @package Email Sender
+	 */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+if ( ! class_exists( 'ES_Sendingemail' ) ) {
+
+	/**
+	 * Class Sendingemail.
+	 */
+	class ES_Sendingemail {
+
+		/**
+		 *  Constructor.
+		 */
+		public function __construct() {
+			add_filter( 'woocommerce_email_actions',  array( $this,'shipping_email_actions'), 20, 1 );
+			add_action('woocommerce_order_status_shipping',array( $this, 'sending_email_on_shipping_status'), 20, 2);
+		}
+		
+		/**
+		 *  Adding action for 'shipping' order status.
+		 */
+		public function shipping_email_actions( $action ) {
+			
+			$actions[] = 'woocommerce_order_status_wc-shipping';
+			return $actions;
+		}
+
+		/**
+		 * Sending Email on order satus changing to shipping.
+		 */
+		public function sending_email_on_shipping_status( $order_id, $order ) {
+			// HERE below your settings
+			$heading = 'Your Order on Shipping Get Ready';
+			$subject = 'Information Email';
+			
+			// Getting all WC_emails objects
+			$mailer = WC()->mailer()->get_emails();
+			$mailer['WC_Email_Customer_Completed_Order']->heading = $heading;
+			$mailer['WC_Email_Customer_Completed_Order']->settings['heading'] = $heading;
+			$mailer['WC_Email_Customer_Completed_Order']->subject = $subject;
+			$mailer['WC_Email_Customer_Completed_Order']->settings['subject'] = $subject;
+		
+			// Sending the customized email
+			$mailer['WC_Email_Customer_Completed_Order']->trigger( $order_id );
+            add_filter( 'woocommerce_email_recipient_customer_processing_order',  array( $this, 'bbloomer_order_processing_email_add_to'), 9999, 3 );
+
+		}
+	}
+}
+new ES_Sendingemail();
+?>
