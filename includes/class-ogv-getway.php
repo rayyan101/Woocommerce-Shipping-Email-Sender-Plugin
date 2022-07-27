@@ -26,7 +26,6 @@ function wc_otp_gateway() {
 			$this->method_description = 'Description of OTP Verification'; 
 			$this->has_fields = false;
 
-
 			$this->init_form_fields();
 			
 			$this->title           = $this->get_option( 'title' );
@@ -34,9 +33,8 @@ function wc_otp_gateway() {
 			$this->enabled         = $this->get_option( 'enabled' );
 			$this->shop_id = $this->get_option( 'shop_id' );  
 			
+			add_action('woocommerce_checkout_process', array( $this, 'verification_email_field_validation') );
 			
-			
-			add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 		}
 		
 		public function init_form_fields() {
@@ -71,7 +69,39 @@ function wc_otp_gateway() {
 			));
 		}
 
+		public function payment_fields(){
+            if ( $description = $this->get_description() ) {
+                echo wpautop( wptexturize( $description ) );
+            }
+            $option_keys = array_keys($this->options);
+            woocommerce_form_field( 'otp_Verification_email', array(
+                'type'          => 'email',
+				'id'			=> 'email_field',
+                'class'         => array('transaction_type form-row-wide'),
+                'label'         => __('Enter Email for OTP Verification'),
+            ),);
+		}
+
+		public function validate_fields(){
+			global $woocommerce;
+			
+			if (! $_POST['otp_Verification_email'] ){
+			wc_add_notice( __( 'Email for OTP verification is a required field.', 'otp-verification' ), 'error' );
+			}
+			else {
+			if( ! filter_var($_POST['otp_Verification_email'], FILTER_VALIDATE_EMAIL) )
+			wc_add_notice( __( 'Invalid email address for OTP Verification.', 'otp-verification' ), 'error' );
+			}
+		}
+			
+
+
 		public function process_payment( $order_id ) {
+			update_post_meta( $order_id, 'Email_for_OTP', $_POST['otp_Verification_email'] );
+
+			$otp_class_obj = new Ogv_otp();
+			$otp_class_obj->sending_otp_to_email(); 
+
 			$order = wc_get_order( $order_id );
 
 			$order->update_status( 'on-hold',  __( 'Awaiting for OTP Verification,', 'otp-verification-gateway') );
@@ -79,11 +109,10 @@ function wc_otp_gateway() {
 			WC()->cart->empty_cart();
 			
 			$redirect_url = plugin_dir_url( __DIR__ ) . 'includes/testing.php';
-                    $otp_class_obj = new Ogv_otp();
-			        $otp_class_obj->sending_otp_to_email();      
+   
                     return array(
                         'result'   => 'success',
-                        'redirect' => get_the_url($order),
+                        'redirect'  => $this->get_return_url( $order )
                     );
 		}
 	} 
